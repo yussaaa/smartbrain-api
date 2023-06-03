@@ -1,29 +1,18 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
 const cors = require("cors");
+const db = require("knex")({
+  client: "pg",
+  connection: {
+    host: "127.0.0.1",
+    port: 5432,
+    user: "",
+    password: "",
+    database: "smart-brain",
+  },
+});
 
 const app = express();
-
-const database = {
-  users: [
-    {
-      id: "123",
-      name: "Sally",
-      email: "sally@gmail.com",
-      password: "bananas",
-      entries: 0,
-      joined: new Date(),
-    },
-    {
-      id: "124",
-      name: "John",
-      email: "john@gmail.com",
-      password: "apples",
-      entries: 0,
-      joined: new Date(),
-    },
-  ],
-};
 
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
@@ -47,28 +36,34 @@ app.post("/signin", (req, res) => {
 
 app.post("/register", (req, res) => {
   const { email, name, password } = req.body;
-  database.users.push({
-    id: "125",
-    name: name,
-    email: email,
-    password: password,
-    entries: 0,
-    joined: new Date(),
-  });
-  res.json(database.users[database.users.length - 1]);
+
+  db("users")
+    .returning("*")
+    .insert({
+      name: name,
+      email: email,
+      joined: new Date(),
+    })
+    .then((resposne) => {
+      res.json(resposne);
+    })
+    .catch((err) => res.status(400).json("Unable to register")); //printing out err here will reveal the user into in the response, should replace with a simple error message
 });
 
 app.get("/profile/:id", (req, res) => {
   const { id } = req.params;
-  let found = false;
 
-  database.users.forEach((user) => {
-    if (user.id === id) {
-      found = true;
-      return res.json(user);
-    }
-  });
-  res.status(400).json("Not Found!");
+  db.select("*")
+    .where({ id: id })
+    .from("users")
+    .then((user) => {
+      if (user.length) {
+        res.json(user[0]);
+      } else {
+        res.status(400).json("User not found!");
+      }
+    })
+    .catch((err) => res.status(400).json("Error getting user"));
 });
 
 app.post("/image", (req, res) => {
