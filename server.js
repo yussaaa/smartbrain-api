@@ -23,31 +23,67 @@ app.get("/", (req, res) => {
 });
 
 app.post("/signin", (req, res) => {
-  if (
-    req.body.email === database.users[1].email &&
-    req.body.password === database.users[1].password
-  ) {
-    res.json("Success");
-  } else {
-    res.status(400).json("error logging in");
-  }
+  db.select("*")
+    .from("login")
+    .where({ email: req.body.email })
+    .then((user) => {
+      //   res.send(user);
+      const isValidPassword = bcrypt.compareSync(
+        req.body.password,
+        user[0].hash
+      );
+      if (isValidPassword) {
+        // res.json("LogIn Success");
+        return db("users")
+          .select("*")
+          .where({ email: req.body.email })
+          .then((user) => {
+            res.json(user);
+          })
+          .catch((err) =>
+            res.status(400).json("Unable to find retrieve user!")
+          );
+      } else {
+        res.json("Wrong password!");
+      }
+    })
+    .catch((err) => res.status(400).json("Can't find user!"));
+
+  //   if (
+  //     req.body.email === database.users[1].email &&
+  //     req.body.password === database.users[1].password
+  //   ) {
+  //     res.json("Success");
+  //   } else {
+  //     res.status(400).json("error logging in");
+  //   }
   //   res.send(express.json(req.body));
 });
 
 app.post("/register", (req, res) => {
   const { email, name, password } = req.body;
 
-  db("users")
-    .returning("*")
-    .insert({
-      name: name,
-      email: email,
-      joined: new Date(),
-    })
-    .then((resposne) => {
-      res.json(resposne);
-    })
-    .catch((err) => res.status(400).json("Unable to register")); //printing out err here will reveal the user into in the response, should replace with a simple error message
+  const hash = bcrypt.hashSync(password, 10);
+  db.transaction((trx) => {
+    trx
+      .insert({ hash: hash, email: email })
+      .into("login")
+      .returning("email")
+      .then((loginEmail) => {
+        return trx("users")
+          .returning("*")
+          .insert({
+            name: name,
+            email: loginEmail[0].email,
+            joined: new Date(),
+          })
+          .then((user) => {
+            res.json(user[0]);
+          });
+      })
+      .then(trx.commit)
+      .catch(trx.rollback);
+  }).catch((err) => res.status(400).json("Unable to register")); //printing out err here will reveal the user into in the response, should replace with a simple error message
 });
 
 app.get("/profile/:id", (req, res) => {
