@@ -27,9 +27,7 @@ app.get("/", (req, res) => {
   res.json(database.users);
 });
 
-app.post("/signin", (req, res) => {
-  signin.handleSignIn(req, res, db, bcrypt);
-});
+app.post("/signin", signin.handleSignIn(db, bcrypt));
 
 app.post("/register", (req, res) => {
   register.handleRegistr(req, res, db, bcrypt);
@@ -41,6 +39,10 @@ app.get("/profile/:id", (req, res) => {
 
 app.put("/image", (req, res) => {
   image.handleImage(req, res, db);
+});
+
+app.put("/imageurl", (req, res) => {
+  image.handleAPIcall(req, res);
 });
 
 const port_num = 3006;
