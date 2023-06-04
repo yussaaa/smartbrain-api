@@ -1,18 +1,20 @@
-const handleSignIn = (req, res, db, bcrypt) => {
+const handleSignIn = (db, bcrypt) => (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json("Incorrect login format!");
+  }
+
   db.select("*")
     .from("login")
-    .where({ email: req.body.email })
+    .where({ email: email })
     .then((user) => {
       //   res.send(user);
-      const isValidPassword = bcrypt.compareSync(
-        req.body.password,
-        user[0].hash
-      );
+      const isValidPassword = bcrypt.compareSync(password, user[0].hash);
       if (isValidPassword) {
         // res.json("LogIn Success");
         return db("users")
           .select("*")
-          .where({ email: req.body.email })
+          .where({ email: email })
           .then((user) => {
             res.json(user);
           })
